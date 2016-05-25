@@ -1,0 +1,6 @@
+INCLUDEPATH += $$PWD
+DEPENDPATH += $$PWD
+
+QMAKE_CXXFLAGS += -std=c++11
+
+HEADERS += $$PWD/qtutils.h
