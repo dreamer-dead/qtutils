@@ -1,20 +1,9 @@
 #include <QTest>
+#include <memory>
 
-#include "qtutils.h"
-
-class TestRunner : public QObject
-{
-   Q_OBJECT
-public:
-   TestRunner() = default;
-
-private Q_SLOTS:
-   void testCaseRun() {}
-};
-
-#include "tests.moc"
+extern std::unique_ptr<QObject> connectorTestRunner();
 
 int main(int argc, char** argv) {
-    TestRunner runner;
-    return QTest::qExec(&runner, argc, argv);
+    auto test_runner = connectorTestRunner();
+    return QTest::qExec(test_runner.get(), argc, argv);
 }
