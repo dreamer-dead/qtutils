@@ -1,5 +1,6 @@
 #include <QTest>
 #include <QScopedPointer>
+#include <QString>
 #include <memory>
 
 #include "qtutils.h"
@@ -9,9 +10,9 @@ namespace {
 template <typename T1, typename T2>
 struct ConnectorFriend : protected QtUtils::Connector<T1, T2> {
 public:
-    typedef QtUtils::Connector<T1, T2> BaseType;
-    typedef typename BaseType::SignallingType SignallingType;
-    typedef typename BaseType::ReceivingType ReceivingType;
+    using BaseType = QtUtils::Connector<T1, T2>;
+    using SignallingType = typename BaseType::SignallingType;
+    using ReceivingType = typename BaseType::ReceivingType;
 
     static ReceivingType getSignalObj(const BaseType& connector) {
         return ConnectorFriend(connector).m_signallingObject;
@@ -34,6 +35,7 @@ inline typename QtUtils::Connector<T1, T2>::SignallingType
 getSignalObj(const QtUtils::Connector<T1, T2>& connector) {
     return ConnectorFriend<T1, T2>::getSignalObj(connector);
 }
+
 template <typename T1, typename T2>
 inline typename QtUtils::Connector<T1, T2>::ReceivingType
 getRecvObj(const QtUtils::Connector<T1, T2>& connector) {
@@ -43,6 +45,37 @@ getRecvObj(const QtUtils::Connector<T1, T2>& connector) {
 struct PlainObject {};
 }
 
+// Simple Qt signal emitter.
+class TestSignalEmitter : public QObject
+{
+   Q_OBJECT
+public:
+    TestSignalEmitter () = default;
+
+Q_SIGNALS:
+    void onSignal(const QString& someMessage);
+};
+
+// Simple signal handler.
+// Will save latest signal data.
+class TestSignalHandler : public QObject
+{
+   Q_OBJECT
+public:
+    TestSignalHandler () = default;
+
+    const QString& lastSignalMessage() const { return m_lastSignalMessage; }
+
+public Q_SLOTS:
+    void handleSignal(const QString& someMessage) {
+        m_lastSignalMessage = someMessage;
+    }
+
+private:
+    QString m_lastSignalMessage;
+};
+
+// Main runner for test cases in this file.
 class ConnectorTestRunner : public QObject
 {
    Q_OBJECT
@@ -50,6 +83,7 @@ public:
    ConnectorTestRunner() = default;
 
 private Q_SLOTS:
+    // All tests.
 
     void testCaseCheckObjects() {
         const PlainObject obj = {};
@@ -107,6 +141,24 @@ private Q_SLOTS:
                 QtUtils::makeQueuedConnector(smartPointer, smartPointer2);
         QCOMPARE(smartPointer.data(), getSignalObj(queuedConnector));
         QCOMPARE(smartPointer2.data(), getRecvObj(queuedConnector));
+    }
+
+    void testCaseEmitSignal() {
+        TestSignalEmitter signalEmitter;
+        TestSignalHandler signalHandler;
+
+        const auto& connector = QtUtils::makeConnector(&signalEmitter, &signalHandler);
+        connector.connect(&TestSignalEmitter::onSignal, &TestSignalHandler::handleSignal);
+
+        const QString testMessage = QString::fromLatin1("CONNECT");
+        emit signalEmitter.onSignal(testMessage);
+
+        QCOMPARE(testMessage, signalHandler.lastSignalMessage());
+
+        connector.disconnect(&TestSignalEmitter::onSignal, &TestSignalHandler::handleSignal);
+        emit signalEmitter.onSignal(QString::fromLatin1("DISCONNECT"));
+
+        QCOMPARE(testMessage, signalHandler.lastSignalMessage());
     }
 };
 
