@@ -9,8 +9,10 @@ namespace QtUtils {
 template <typename T1 = QObject, typename T2 = QObject>
 class Connector {
 public:
-    typedef const T1* SignallingType;
-    typedef const T2* ReceivingType;
+    using SignallingType = const T1*;
+    using ReceivingType = const T2*;
+
+    Connector() = delete;
 
     explicit Connector(const T1* signalObj)
         : m_signallingObject(signalObj), m_receivingObject(signalObj) {
@@ -22,6 +24,8 @@ public:
         Q_ASSERT(m_signallingObject);
         Q_ASSERT(m_receivingObject);
     }
+
+    Connector(const Connector&) = default;
 
     template <typename Func1, typename Func2>
     const Connector& connect(Func1 signal, Func2 slot) const {
@@ -36,6 +40,8 @@ public:
     }
 
 protected:
+    void operator=(const Connector&) = delete;
+
     SignallingType const m_signallingObject;
     ReceivingType const m_receivingObject;
 };
@@ -43,6 +49,8 @@ protected:
 template <typename T1 = QObject, typename T2 = QObject>
 class ConnectorWithType : public Connector<T1, T2> {
 public:
+    ConnectorWithType() = delete;
+
     ConnectorWithType(const T1* signalObj, Qt::ConnectionType type)
         : Connector<T1, T2>(signalObj), m_type(type) {
     }
@@ -50,6 +58,8 @@ public:
     ConnectorWithType(const T1* signalObj, const T2* recvObj, Qt::ConnectionType type)
         : Connector<T1, T2>(signalObj, recvObj), m_type(type) {
     }
+
+    ConnectorWithType(const ConnectorWithType&) = default;
 
     template <typename Func1, typename Func2>
     const ConnectorWithType& connect(Func1 signal, Func2 slot) const {
@@ -66,6 +76,8 @@ public:
     Qt::ConnectionType type() const { return m_type; }
 
 private:
+    void operator=(const ConnectorWithType&) = delete;
+
     const Qt::ConnectionType m_type;
 };
 
@@ -95,12 +107,12 @@ inline ConnectorWithType<T1, T2> makeQueuedConnector(
 
 template <typename T, typename Func>
 inline void deleteLaterOn(const T* signalObj, Func signal) {
-    Connector<T, T>(signalObj).connect(signal, SLOT(deleteLater()));
+    Connector<T, T>(signalObj).connect(signal, &QObject::deleteLater);
 }
 
 template <typename T, typename Func>
 inline void deleteLaterOn(const QScopedPointer<T>& signalObj, Func signal) {
-    Connector<T, T>(signalObj.data()).connect(signal, SLOT(deleteLater()));
+    Connector<T, T>(signalObj.data()).connect(signal, &QObject::deleteLater);
 }
 }
 
