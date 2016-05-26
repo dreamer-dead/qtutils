@@ -1,4 +1,4 @@
-include (../lib/lib.pri)
+include (../include/include.pri)
 
 QT += testlib
 QT -= gui
